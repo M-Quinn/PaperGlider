@@ -5,45 +5,111 @@ using UnityEngine.UIElements;
 
 public class WorldMovement : MonoBehaviour
 {
-    private Vector2 userMovement;
-    public GameObject World;
-    public float speed = 3;
-    Camera mainCamera;
-    
-    // Start is called before the first frame update
-    void Start()
+    [SerializeField] private float worldMoveSpeed = 5f;
+    [SerializeField] private Transform worldParent; // Assign your "WorldTiles" parent here
+    [SerializeField] private Camera mainCamera; // Drag your main camera here
+    [SerializeField] private float cullDistance = 20f; // Distance from player to disable tiles
+
+    private Vector2Int playerTileCoord = Vector2Int.zero; // Keep track of what tile the player is on
+    private WorldSpawner worldSpawner;
+
+    private void Start()
     {
-        mainCamera = Camera.main;
+        if (worldParent == null)
+        {
+            Debug.LogError("World Parent is not assigned!");
+            return;
+        }
+
+        if (mainCamera == null)
+        {
+            Debug.LogError("Main Camera is not assigned!");
+            mainCamera = Camera.main;
+            if (mainCamera == null)
+            {
+                Debug.LogError("No Main Camera found in the scene!");
+                return;
+            }
+        }
+        worldSpawner = GetComponent<WorldSpawner>();
+        if (worldSpawner == null)
+        {
+             worldSpawner = GetComponentInParent<WorldSpawner>();
+             if(worldSpawner == null){
+                Debug.LogError("WorldSpawner is not assigned or found in parent!");
+                return;
+             }
+        }
     }
 
-    // Update is called once per frame
-    void Update()
+    private void Update()
     {
-        transform.LookAt(Input.mousePosition);
-        
+        // 1. Player Facing Mouse Cursor
         RotatePlayerTowardsMouse();
-        
-        Vector2 moveOffset = -transform.right * speed * Time.deltaTime;
-        
-        World. transform.Translate(moveOffset, Space.World);
+
+        // 2. Move the World based on Player's Facing Direction
+        MoveWorld();
+
+        // 3. Update active tiles
+        UpdateActiveTiles();
     }
-    
+
     private void RotatePlayerTowardsMouse()
     {
         if (mainCamera == null) return;
 
         Vector3 mousePos = Input.mousePosition;
-        // Convert mouse position to world coordinates, considering the camera's Z position
         Vector3 mouseWorldPosition = mainCamera.ScreenToWorldPoint(new Vector3(mousePos.x, mousePos.y, mainCamera.transform.position.z));
-
-        // Get the direction from the player to the mouse position
         Vector2 direction = mouseWorldPosition - transform.position;
-        direction.Normalize(); // Ensure the direction vector has a magnitude of 1
-
-        // Calculate the rotation angle in degrees (0 degrees is right, increasing counter-clockwise)
+        direction.Normalize();
         float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
-
-        // Apply the rotation to the player.
         transform.rotation = Quaternion.Euler(0f, 0f, angle);
+    }
+
+    private void MoveWorld()
+    {
+        Vector2 moveOffset = -transform.right * worldMoveSpeed * Time.deltaTime;
+        worldParent.position += (Vector3)moveOffset;
+
+        // Update player tile coordinate
+        playerTileCoord = WorldToTileCoordinates(transform.position);
+    }
+
+    private Vector2Int WorldToTileCoordinates(Vector3 worldPosition)
+    {
+        return new Vector2Int(0,0);
+        /*Vector3 worldCenter = worldParent.position;
+        float halfWorldWidth = (worldSpawner.GetWorldSizeInTiles().x * worldSpawner.GetTileSize()) / 2f;
+        float halfWorldHeight = (worldSpawner.GetWorldSizeInTiles().y * worldSpawner.GetTileSize()) / 2f;
+
+        // Calculate tile coordinates, handling wrapping.
+        int x = Mathf.FloorToInt((worldPosition.x - worldCenter.x + halfWorldWidth) / worldSpawner.GetTileSize());
+        int y = Mathf.FloorToInt((worldPosition.z - worldCenter.z + halfWorldHeight) / worldSpawner.GetTileSize());
+
+        // Wrap the coordinates
+        x = (x % worldSpawner.GetWorldSizeInTiles().x + worldSpawner.GetWorldSizeInTiles().x) % worldSpawner.GetWorldSizeInTiles().x;
+        y = (y % worldSpawner.GetWorldSizeInTiles().y + worldSpawner.GetWorldSizeInTiles().y) % worldSpawner.GetWorldSizeInTiles().y;
+
+        return new Vector2Int(x, y);*/
+    }
+
+    private void UpdateActiveTiles()
+    {
+        /*Dictionary<Vector2Int, Transform> tileMap = worldSpawner.GetTileMap();
+        Vector2Int worldSizeInTiles = worldSpawner.GetWorldSizeInTiles();
+
+        for (int x = 0; x < worldSizeInTiles.x; x++)
+        {
+            for (int y = 0; y < worldSizeInTiles.y; y++)
+            {
+                Vector2Int tileCoord = new Vector2Int(x, y);
+                Transform tileTransform = tileMap[tileCoord];
+                if (tileTransform != null)
+                {
+                    float distance = Vector3.Distance(transform.position, tileTransform.position);
+                    tileTransform.gameObject.SetActive(distance <= cullDistance);
+                }
+            }
+        }*/
     }
 }

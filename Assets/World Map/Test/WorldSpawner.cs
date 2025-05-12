@@ -1,7 +1,7 @@
 using UnityEngine;
+using System.Collections.Generic;
 
-public class CreateGrid
-    : MonoBehaviour
+public class WorldSpawner : MonoBehaviour
 {
     [SerializeField] private GameObject planePrefab;
     [SerializeField] private Material[] tileMaterials;
@@ -51,7 +51,7 @@ public class CreateGrid
     {
         float totalWidth = (gridSizeX - 1) * spacingX;
         float totalHeight = (gridSizeY - 1) * spacingY;
-        Vector3 centerOffset = new Vector3(-totalWidth / 2f, -totalHeight / 2f,0 );
+        Vector3 centerOffset = new Vector3(-totalWidth / 2f, -totalHeight / 2f, 0f);
 
         int materialIndex = 0;
 
@@ -60,7 +60,7 @@ public class CreateGrid
             for (int x = 0; x < gridSizeY; x++)
             {
                 Vector3 spawnPosition = new Vector3(x * spacingX, y * spacingY, 0f) + centerOffset + worldParent.position;
-                GameObject tileInstance = Instantiate(planePrefab, spawnPosition, Quaternion.Euler(90,-90,-270), worldParent);
+                GameObject tileInstance = Instantiate(planePrefab, spawnPosition, Quaternion.Euler(90f,90f,-90f), worldParent);
 
                 Renderer renderer = tileInstance.GetComponent<Renderer>();
                 if (renderer != null)
