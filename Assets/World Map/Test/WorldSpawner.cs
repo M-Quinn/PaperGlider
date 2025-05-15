@@ -2,6 +2,7 @@ using System;
 using UnityEngine;
 using System.Collections.Generic;
 using UnityEngine.Serialization;
+using Random = UnityEngine.Random;
 
 public class WorldSpawner : MonoBehaviour
 {
@@ -15,6 +16,12 @@ public class WorldSpawner : MonoBehaviour
     Vector2Int gridSizeVector;
     private float spacingX;
     private float spacingY;
+
+    private SpriteRenderer spriteRenderer;
+    private Vector3 localMinBounds;
+    private Vector3 localMaxBounds;
+    
+    [SerializeField] GameObject obstaclePrefab;
 
     private void Awake()
     {
@@ -41,7 +48,8 @@ public class WorldSpawner : MonoBehaviour
         {
             spacingX = planeRenderer.bounds.size.x;
             spacingY = planeRenderer.bounds.size.y;
-            Debug.Log($"Tile Size X: {spacingX}, Tile Size Z: {spacingY}");
+            Debug.Log($"Tile Size X: {spacingX}, Tile Size Y: {spacingY}");
+            
             SpawnGrid();
         }
         else
@@ -63,8 +71,23 @@ public class WorldSpawner : MonoBehaviour
             for (int x = 0; x < gridSizeVector.y; x++)
             {
                 Vector3 spawnPosition = new Vector3(x * spacingX, y * spacingY, 0f) + centerOffset + worldParent.position;
-                GameObject tileInstance = Instantiate(planePrefab, spawnPosition, Quaternion.Euler(90f,90f,-90f), worldParent);
+                GameObject tileInstance = Instantiate(planePrefab, spawnPosition, Quaternion.identity, worldParent);
 
+                spriteRenderer = tileInstance.GetComponent<SpriteRenderer>();
+                
+                localMinBounds = tileInstance.transform.InverseTransformPoint(spriteRenderer.bounds.min);
+                localMaxBounds = tileInstance.transform.InverseTransformPoint(spriteRenderer.bounds.max);
+
+                Vector3 obstacleSpawnPosition = new Vector3(
+                    Random.Range(localMinBounds.x, localMaxBounds.x),
+                    Random.Range(localMinBounds.y, localMaxBounds.y),
+                    -1f);
+                
+                GameObject obstacleInstance = Instantiate(obstaclePrefab, Vector3.zero, Quaternion.identity);
+                
+                obstacleInstance.transform.SetParent(tileInstance.transform);
+                obstacleInstance.transform.localPosition = obstacleSpawnPosition;
+                
                 Renderer renderer = tileInstance.GetComponent<Renderer>();
                 if (renderer != null)
                 {
