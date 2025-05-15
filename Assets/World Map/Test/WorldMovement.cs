@@ -1,7 +1,5 @@
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.UIElements;
 
 public class WorldMovement : MonoBehaviour
 {
@@ -54,6 +52,8 @@ public class WorldMovement : MonoBehaviour
 
         // Update player tile coordinate
         playerTileCoord = WorldToTileCoordinates(transform.position);
+        
+        WrapTiles();
     }
 
     private Vector2Int WorldToTileCoordinates(Vector3 worldPosition)
@@ -89,6 +89,41 @@ public class WorldMovement : MonoBehaviour
                     float distance = Vector3.Distance(transform.position, tileTransform.position);
                     tileTransform.gameObject.SetActive(distance <= cullDistance);
                 }
+            }
+        }
+    }
+    private void WrapTiles()
+    {
+        Dictionary<Vector2Int, Transform> tileMap = worldSpawner.GetTileMap();
+        Vector2Int gridSize = worldSpawner.GetWorldSizeInTiles();
+        float tileSize = worldSpawner.GetTileSize();
+        Vector3 playerPos = transform.position;
+
+        foreach (var kvp in tileMap)
+        {
+            Vector2Int tileCoord = kvp.Key;
+            Transform tileTransform = kvp.Value;
+
+            Vector3 tilePos = tileTransform.position;
+            Vector3 offset = tilePos - playerPos;
+
+            int moveX = 0, moveY = 0;
+
+            // Wrap horizontally
+            if (offset.x > tileSize * gridSize.x / 2f)
+                moveX = -gridSize.x;
+            else if (offset.x < -tileSize * gridSize.x / 2f)
+                moveX = gridSize.x;
+
+            // Wrap vertically
+            if (offset.y > tileSize * gridSize.y / 2f)
+                moveY = -gridSize.y;
+            else if (offset.y < -tileSize * gridSize.y / 2f)
+                moveY = gridSize.y;
+
+            if (moveX != 0 || moveY != 0)
+            {
+                tileTransform.position += new Vector3(moveX * tileSize, moveY * tileSize, 0f);
             }
         }
     }

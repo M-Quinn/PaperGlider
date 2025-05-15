@@ -9,8 +9,8 @@ public class WorldSpawner : MonoBehaviour
 
     private Dictionary<Vector2Int, Transform> tileMap = new Dictionary<Vector2Int, Transform>();
     
-    private int gridSizeX = 2; //5x5
-    private int gridSizeY = 2;
+    private int gridSizeX = 5; //5x5
+    private int gridSizeY = 5;
     private float spacingX;
     private float spacingY;
 
