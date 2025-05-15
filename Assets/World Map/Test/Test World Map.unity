@@ -611,8 +611,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2757a194754dfae488c326dbc5afddf5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  World: {fileID: 160560996}
-  speed: 3
+  worldMoveSpeed: 5
+  worldParent: {fileID: 160560998}
+  cullDistance: 50
+  worldSpawner: {fileID: 160560997}
 --- !u!1 &1668991790
 GameObject:
   m_ObjectHideFlags: 0

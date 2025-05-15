@@ -7,8 +7,10 @@ public class WorldSpawner : MonoBehaviour
     [SerializeField] private Material[] tileMaterials;
     [SerializeField] private Transform worldParent;
 
-    private int gridSizeX = 3;
-    private int gridSizeY = 3;
+    private Dictionary<Vector2Int, Transform> tileMap = new Dictionary<Vector2Int, Transform>();
+    
+    private int gridSizeX = 2; //5x5
+    private int gridSizeY = 2;
     private float spacingX;
     private float spacingY;
 
@@ -17,12 +19,6 @@ public class WorldSpawner : MonoBehaviour
         if (planePrefab == null)
         {
             Debug.LogError("Plane Prefab is not assigned!");
-            return;
-        }
-
-        if (tileMaterials == null || tileMaterials.Length < gridSizeX * gridSizeY)
-        {
-            Debug.LogError("Not enough materials assigned in tileMaterials array!");
             return;
         }
 
@@ -73,7 +69,36 @@ public class WorldSpawner : MonoBehaviour
                 }
 
                 materialIndex++;
+                
+                Vector2Int tileCoord = new Vector2Int(x, y);
+                
+                tileMap.Add(tileCoord, tileInstance.transform);
+                tileInstance.name = $"Tile_{tileCoord.x}_{tileCoord.y}";
             }
         }
+    }
+    
+    public Transform GetTile(Vector2Int tileCoord)
+    {
+        if (tileMap.ContainsKey(tileCoord))
+        {
+            return tileMap[tileCoord];
+        }
+        return null; // Or handle the case where the tile doesn't exist
+    }
+
+    public Dictionary<Vector2Int, Transform> GetTileMap()
+    {
+        return tileMap;
+    }
+
+    public Vector2Int GetWorldSizeInTiles()
+    {
+        return new Vector2Int(gridSizeX, gridSizeY);
+    }
+
+    public float GetTileSize()
+    {
+        return spacingX;// its fine since it's a square
     }
 }

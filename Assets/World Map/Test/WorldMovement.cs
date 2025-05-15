@@ -7,11 +7,11 @@ public class WorldMovement : MonoBehaviour
 {
     [SerializeField] private float worldMoveSpeed = 5f;
     [SerializeField] private Transform worldParent; // Assign your "WorldTiles" parent here
-    [SerializeField] private Camera mainCamera; // Drag your main camera here
+    private Camera mainCamera; 
     [SerializeField] private float cullDistance = 20f; // Distance from player to disable tiles
 
     private Vector2Int playerTileCoord = Vector2Int.zero; // Keep track of what tile the player is on
-    private WorldSpawner worldSpawner;
+    [SerializeField] private WorldSpawner worldSpawner;
 
     private void Start()
     {
@@ -21,36 +21,17 @@ public class WorldMovement : MonoBehaviour
             return;
         }
 
-        if (mainCamera == null)
-        {
-            Debug.LogError("Main Camera is not assigned!");
-            mainCamera = Camera.main;
-            if (mainCamera == null)
-            {
-                Debug.LogError("No Main Camera found in the scene!");
-                return;
-            }
-        }
-        worldSpawner = GetComponent<WorldSpawner>();
-        if (worldSpawner == null)
-        {
-             worldSpawner = GetComponentInParent<WorldSpawner>();
-             if(worldSpawner == null){
-                Debug.LogError("WorldSpawner is not assigned or found in parent!");
-                return;
-             }
-        }
+        mainCamera = Camera.main;
     }
 
     private void Update()
     {
-        // 1. Player Facing Mouse Cursor
         RotatePlayerTowardsMouse();
 
-        // 2. Move the World based on Player's Facing Direction
+        
         MoveWorld();
 
-        // 3. Update active tiles
+        
         UpdateActiveTiles();
     }
 
@@ -77,8 +58,7 @@ public class WorldMovement : MonoBehaviour
 
     private Vector2Int WorldToTileCoordinates(Vector3 worldPosition)
     {
-        return new Vector2Int(0,0);
-        /*Vector3 worldCenter = worldParent.position;
+        Vector3 worldCenter = worldParent.position;
         float halfWorldWidth = (worldSpawner.GetWorldSizeInTiles().x * worldSpawner.GetTileSize()) / 2f;
         float halfWorldHeight = (worldSpawner.GetWorldSizeInTiles().y * worldSpawner.GetTileSize()) / 2f;
 
@@ -90,12 +70,12 @@ public class WorldMovement : MonoBehaviour
         x = (x % worldSpawner.GetWorldSizeInTiles().x + worldSpawner.GetWorldSizeInTiles().x) % worldSpawner.GetWorldSizeInTiles().x;
         y = (y % worldSpawner.GetWorldSizeInTiles().y + worldSpawner.GetWorldSizeInTiles().y) % worldSpawner.GetWorldSizeInTiles().y;
 
-        return new Vector2Int(x, y);*/
+        return new Vector2Int(x, y);
     }
 
     private void UpdateActiveTiles()
     {
-        /*Dictionary<Vector2Int, Transform> tileMap = worldSpawner.GetTileMap();
+        Dictionary<Vector2Int, Transform> tileMap = worldSpawner.GetTileMap();
         Vector2Int worldSizeInTiles = worldSpawner.GetWorldSizeInTiles();
 
         for (int x = 0; x < worldSizeInTiles.x; x++)
@@ -110,6 +90,6 @@ public class WorldMovement : MonoBehaviour
                     tileTransform.gameObject.SetActive(distance <= cullDistance);
                 }
             }
-        }*/
+        }
     }
 }
