@@ -1,5 +1,7 @@
+using System;
 using UnityEngine;
 using System.Collections.Generic;
+using UnityEngine.Serialization;
 
 public class WorldSpawner : MonoBehaviour
 {
@@ -8,11 +10,16 @@ public class WorldSpawner : MonoBehaviour
     [SerializeField] private Transform worldParent;
 
     private Dictionary<Vector2Int, Transform> tileMap = new Dictionary<Vector2Int, Transform>();
-    
-    private int gridSizeX = 5; //5x5
-    private int gridSizeY = 5;
+
+    [SerializeField] private int gridSize;
+    Vector2Int gridSizeVector;
     private float spacingX;
     private float spacingY;
+
+    private void Awake()
+    {
+        gridSizeVector = new Vector2Int(gridSize, gridSize);
+    }
 
     void Start()
     {
@@ -45,15 +52,15 @@ public class WorldSpawner : MonoBehaviour
 
     private void SpawnGrid()
     {
-        float totalWidth = (gridSizeX - 1) * spacingX;
-        float totalHeight = (gridSizeY - 1) * spacingY;
+        float totalWidth = (gridSizeVector.x - 1) * spacingX;
+        float totalHeight = (gridSizeVector.y - 1) * spacingY;
         Vector3 centerOffset = new Vector3(-totalWidth / 2f, -totalHeight / 2f, 0f);
 
         int materialIndex = 0;
 
-        for (int y = 0; y < gridSizeX; y++)
+        for (int y = 0; y < gridSizeVector.x; y++)
         {
-            for (int x = 0; x < gridSizeY; x++)
+            for (int x = 0; x < gridSizeVector.y; x++)
             {
                 Vector3 spawnPosition = new Vector3(x * spacingX, y * spacingY, 0f) + centerOffset + worldParent.position;
                 GameObject tileInstance = Instantiate(planePrefab, spawnPosition, Quaternion.Euler(90f,90f,-90f), worldParent);
@@ -94,7 +101,7 @@ public class WorldSpawner : MonoBehaviour
 
     public Vector2Int GetWorldSizeInTiles()
     {
-        return new Vector2Int(gridSizeX, gridSizeY);
+        return gridSizeVector;
     }
 
     public float GetTileSize()
