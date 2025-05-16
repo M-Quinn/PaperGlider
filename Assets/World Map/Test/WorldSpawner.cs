@@ -102,7 +102,7 @@ public class WorldSpawner : MonoBehaviour
                 Vector2Int tileCoord = new Vector2Int(x, y);
                 
                 tileMap.Add(tileCoord, tileInstance.transform);
-                tileInstance.name = $"Tile_{tileCoord.x}_{tileCoord.y}";
+                tileInstance.name = $"Tile_{tileCoord.y}_{tileCoord.x}";
             }
         }
     }

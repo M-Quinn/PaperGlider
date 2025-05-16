@@ -431,7 +431,13 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 8
   avoidTurnAngle: 90
-  rotationSpeed: 200
+  rotationSpeed: 70
+  worldSpawner: {fileID: 160560997}
+  checkTileEveryNFrames: 10
+  tileDetectionRadius: 0.1
+  tileLayer:
+    serializedVersion: 2
+    m_Bits: 16
 --- !u!50 &1564299617
 Rigidbody2D:
   serializedVersion: 4
@@ -520,7 +526,7 @@ Transform:
   m_GameObject: {fileID: 1564299615}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -100.97, y: 0, z: 0}
+  m_LocalPosition: {x: -100.97, y: 0, z: -1}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -533,7 +539,7 @@ CapsuleCollider2D:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1564299615}
-  m_Enabled: 1
+  m_Enabled: 0
   m_Density: 1
   m_Material: {fileID: 0}
   m_IncludeLayers:
