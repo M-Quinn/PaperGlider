@@ -1,116 +1,132 @@
-using System.Collections.Generic;
-using Unity.VisualScripting;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 [RequireComponent(typeof(Rigidbody2D))]
 public class MovingBoat : MonoBehaviour
 {
     [Header("Movement")]
-    public Transform player;
-    public float desiredDistance = 5f;
-    public float moveSpeed = 3f;
-    public float obstacleAvoidanceRange = 3f;
-    public float castRadius = 1f;
-    public LayerMask obstacleLayer;
-    public float avoidTurnAngle = 90f;
-    public float rotationSpeed = 200f;
+    [SerializeField] float desiredDistance = 5f;
+    [SerializeField] float moveSpeed = 3f;
+    [SerializeField] float rotationSpeed = 70f;
+    
+    [Header("Obstacle Avoidance Settings")]
+    [SerializeField] [Tooltip("The distance from the object before casting a circle")] float obstacleAvoidanceRange = 3f;
+    [SerializeField] [Tooltip("The radius of the circle casted for checking if obstacles are around")] float castRadius = 1f;
+    [SerializeField] LayerMask obstacleLayer;
+    [SerializeField] float avoidTurnAngle = 110f;
 
+    [FormerlySerializedAs("checkTileEveryNFrames")]
     [Header("World Tile Tracking")]
-    [Tooltip("Assign the WorldSpawner to access the tile map and grid info.")]
-    public WorldSpawner worldSpawner;
     [Tooltip("How often (in frames) to check for tile changes.")]
-    public int checkTileEveryNFrames = 10;
+    [SerializeField] int frameDelay = 10;
     [SerializeField] private float tileDetectionRadius = 0.1f;
     [SerializeField] private LayerMask tileLayer;
 
+    [Header("Debugging")]
+    [SerializeField] Transform player;
+    
     private Rigidbody2D rb;
-    private Vector2Int currentTileCoord;
-    private Transform currentTileTransform;
     private Vector2 currentDirection;
     private Transform parentTransform;
+    
+    private enum AvoidDirection { None, Left, Right }
+    private AvoidDirection lastAvoidDirection  = AvoidDirection.None;
 
     private int frameCounter = 0;
-    private float tileSize;
-    private Vector2Int worldSize;
-    private Dictionary<Vector2Int, Transform> tileMap;
 
     void Start()
     {
         rb = GetComponent<Rigidbody2D>();
         rb.freezeRotation = false;
-
-        if (worldSpawner != null)
-        {
-            tileMap = worldSpawner.GetTileMap();
-            tileSize = worldSpawner.GetTileSize();
-            worldSize = worldSpawner.GetWorldSizeInTiles();
-        }
-        else
-        {
-            Debug.LogError("WorldSpawner reference not set on MovingBoat.");
-        }
     }
 
     void FixedUpdate()
     {
-        if (player == null || tileMap == null) return;
+        if (player == null)
+            return;
 
         HandleMovement();
 
         frameCounter++;
-        if (frameCounter >= checkTileEveryNFrames)
+        if (frameCounter >= frameDelay)
         {
             DetectTile();
             frameCounter = 0;
         }
     }
 
-    private void HandleMovement()
+    public void AssignPlayerTransform(Transform playerTransform)
     {
-        Vector2 toPlayer = player.position - transform.position;
-        float distanceToPlayer = toPlayer.magnitude;
+        this.player = playerTransform;
+    }
 
-        if (distanceToPlayer > desiredDistance)
+    private void HandleMovement()
+{
+    Vector2 toPlayer = player.position - transform.position;
+    float distanceToPlayer = toPlayer.magnitude;
+
+    if (distanceToPlayer > desiredDistance)
+    {
+        Vector2 desiredDirection = toPlayer.normalized;
+
+        RaycastHit2D hit = Physics2D.CircleCast(transform.position, castRadius, desiredDirection, obstacleAvoidanceRange, obstacleLayer);
+        if (hit)
         {
-            Vector2 desiredDirection = toPlayer.normalized;
+            float proximity = 1f - (hit.distance / obstacleAvoidanceRange);
+            float dynamicTurnAngle = Mathf.Lerp(5f, avoidTurnAngle, proximity);
 
-            RaycastHit2D hit = Physics2D.CircleCast(transform.position, castRadius, desiredDirection, obstacleAvoidanceRange, obstacleLayer);
-            if (hit)
+            Vector2 leftDir = Quaternion.Euler(0, 0, dynamicTurnAngle) * desiredDirection;
+            Vector2 rightDir = Quaternion.Euler(0, 0, -dynamicTurnAngle) * desiredDirection;
+
+            bool leftClear = !Physics2D.CircleCast(transform.position, castRadius, leftDir, obstacleAvoidanceRange * 0.5f, obstacleLayer);
+            bool rightClear = !Physics2D.CircleCast(transform.position, castRadius, rightDir, obstacleAvoidanceRange * 0.5f, obstacleLayer);
+
+            if (leftClear && rightClear)
             {
-                
-                float proximity = 1f - (hit.distance / obstacleAvoidanceRange); // 0 (far) to 1 (very close)
-                float dynamicTurnAngle = Mathf.Lerp(5f, avoidTurnAngle, proximity);
-                
-                Vector2 leftDir = Quaternion.Euler(0, 0, dynamicTurnAngle) * desiredDirection;
-                Vector2 rightDir = Quaternion.Euler(0, 0, -dynamicTurnAngle) * desiredDirection;
-
-                bool leftClear = !Physics2D.Raycast(transform.position, leftDir, obstacleAvoidanceRange, obstacleLayer);
-                bool rightClear = !Physics2D.Raycast(transform.position, rightDir, obstacleAvoidanceRange, obstacleLayer);
-
-                if (leftClear)
-                    desiredDirection = leftDir;
-                else if (rightClear)
+                // Continue in previous direction if valid, else pick one
+                if (lastAvoidDirection == AvoidDirection.Right)
+                {
                     desiredDirection = rightDir;
+                }
                 else
                 {
-                    rb.velocity = Vector2.zero;
-                    return;
+                    desiredDirection = leftDir;
+                    lastAvoidDirection = AvoidDirection.Left;
                 }
-                currentDirection = desiredDirection;
             }
-
-            currentDirection = Vector2.Lerp(currentDirection, desiredDirection, Time.fixedDeltaTime * rotationSpeed/10).normalized;
-            
-            float step = moveSpeed * Time.deltaTime;
-            transform.Translate(currentDirection * step, Space.World);
-
-            // Rotation using transform
-            float angle = Mathf.Atan2(currentDirection.y, currentDirection.x) * Mathf.Rad2Deg - 90f;
-            float currentZ = transform.eulerAngles.z;
-            float smoothZ = Mathf.LerpAngle(currentZ, angle, rotationSpeed * Time.deltaTime);
-            transform.rotation = Quaternion.Euler(0, 0, smoothZ);
+            else if (leftClear)
+            {
+                desiredDirection = leftDir;
+                lastAvoidDirection = AvoidDirection.Left;
+            }
+            else if (rightClear)
+            {
+                desiredDirection = rightDir;
+                lastAvoidDirection = AvoidDirection.Right;
+            }
+            else
+            {
+                rb.velocity = Vector2.zero;
+                return;
+            }
         }
+        else
+        {
+            // Reset if no obstacle in direct path
+            lastAvoidDirection = AvoidDirection.None;
+        }
+
+        currentDirection = Vector2.Lerp(currentDirection, desiredDirection, Time.fixedDeltaTime * rotationSpeed / 10f).normalized;
+
+        float step = moveSpeed * Time.deltaTime;
+        transform.Translate(currentDirection * step, Space.World);
+
+        float angle = Mathf.Atan2(currentDirection.y, currentDirection.x) * Mathf.Rad2Deg - 90f;
+        float currentZ = transform.eulerAngles.z;
+        float smoothZ = Mathf.LerpAngle(currentZ, angle, rotationSpeed * Time.deltaTime);
+        transform.rotation = Quaternion.Euler(0, 0, smoothZ);
     }
+}
 
     private void DetectTile()
     {
@@ -133,5 +149,6 @@ public class MovingBoat : MonoBehaviour
         Gizmos.color = Color.red;
         Vector2 direction = (player.position - transform.position).normalized;
         Gizmos.DrawLine(transform.position, (Vector2)transform.position + direction * obstacleAvoidanceRange);
+        Gizmos.DrawSphere((Vector2)transform.position + direction * obstacleAvoidanceRange, castRadius);
     }
 }
