@@ -3,13 +3,24 @@ using UnityEngine;
 
 public class WorldMovement : MonoBehaviour
 {
+    [Header("Movement Settings")]
     [SerializeField] private float worldMoveSpeed = 5f;
-    [SerializeField] private Transform worldParent; // Assign your "WorldTiles" parent here
-    private Camera mainCamera; 
-    [SerializeField] private float cullDistance = 20f; // Distance from player to disable tiles
+    [SerializeField] private Transform worldParent;
 
-    private Vector2Int playerTileCoord = Vector2Int.zero; // Keep track of what tile the player is on
+    [Header("World Settings")] 
+    [SerializeField] [Tooltip("The number of frames to skip for updating the world | Increasing this may increase performance by removing world checks")]
+    private int frameDelay = 0;
+    [SerializeField] [Tooltip("Tiles within this range will be displayed. Tiles outside this range will be culled.")]
+    private float cullDistance = 35f; 
+
     [SerializeField] private WorldSpawner worldSpawner;
+
+    private Camera mainCamera; 
+    
+    int frameCounter = -1;
+    private Vector2Int worldSize;
+    private float tileSize;
+    private Dictionary<Vector2Int, Transform> tileMap;
 
     private void Start()
     {
@@ -19,18 +30,33 @@ public class WorldMovement : MonoBehaviour
             return;
         }
 
+        if (worldSpawner)
+        {
+            worldSize = worldSpawner.GetWorldSizeInTiles();
+            tileSize = worldSpawner.GetTileSize();
+            tileMap = worldSpawner.GetTileMap();
+        }
+        else
+        {
+            Debug.LogError("Missing WorldSpawner reference!");
+            return;
+        }
+
         mainCamera = Camera.main;
     }
 
     private void Update()
     {
+        frameCounter++;
         RotatePlayerTowardsMouse();
 
-        
         MoveWorld();
 
-        
-        UpdateActiveTiles();
+        if (frameCounter >= frameDelay)
+        {
+            ManageTiles();
+            frameCounter = 0;
+        }
     }
 
     private void RotatePlayerTowardsMouse()
@@ -47,84 +73,52 @@ public class WorldMovement : MonoBehaviour
 
     private void MoveWorld()
     {
-        Vector2 moveOffset = -transform.right * worldMoveSpeed * Time.deltaTime;
+        Vector2 moveOffset = -transform.right * (worldMoveSpeed * Time.deltaTime);
         worldParent.position += (Vector3)moveOffset;
-
-        // Update player tile coordinate
-        playerTileCoord = WorldToTileCoordinates(transform.position);
-        
-        WrapTiles();
     }
-
-    private Vector2Int WorldToTileCoordinates(Vector3 worldPosition)
+    
+    private void ManageTiles()
     {
-        Vector3 worldCenter = worldParent.position;
-        float halfWorldWidth = (worldSpawner.GetWorldSizeInTiles().x * worldSpawner.GetTileSize()) / 2f;
-        float halfWorldHeight = (worldSpawner.GetWorldSizeInTiles().y * worldSpawner.GetTileSize()) / 2f;
-
-        // Calculate tile coordinates, handling wrapping.
-        int x = Mathf.FloorToInt((worldPosition.x - worldCenter.x + halfWorldWidth) / worldSpawner.GetTileSize());
-        int y = Mathf.FloorToInt((worldPosition.z - worldCenter.z + halfWorldHeight) / worldSpawner.GetTileSize());
-
-        // Wrap the coordinates
-        x = (x % worldSpawner.GetWorldSizeInTiles().x + worldSpawner.GetWorldSizeInTiles().x) % worldSpawner.GetWorldSizeInTiles().x;
-        y = (y % worldSpawner.GetWorldSizeInTiles().y + worldSpawner.GetWorldSizeInTiles().y) % worldSpawner.GetWorldSizeInTiles().y;
-
-        return new Vector2Int(x, y);
-    }
-
-    private void UpdateActiveTiles()
-    {
-        Dictionary<Vector2Int, Transform> tileMap = worldSpawner.GetTileMap();
-        Vector2Int worldSizeInTiles = worldSpawner.GetWorldSizeInTiles();
-
-        for (int x = 0; x < worldSizeInTiles.x; x++)
-        {
-            for (int y = 0; y < worldSizeInTiles.y; y++)
-            {
-                Vector2Int tileCoord = new Vector2Int(x, y);
-                Transform tileTransform = tileMap[tileCoord];
-                if (tileTransform != null)
-                {
-                    float distance = Vector3.Distance(transform.position, tileTransform.position);
-                    tileTransform.gameObject.SetActive(distance <= cullDistance);
-                }
-            }
-        }
-    }
-    private void WrapTiles()
-    {
-        Dictionary<Vector2Int, Transform> tileMap = worldSpawner.GetTileMap();
-        Vector2Int gridSize = worldSpawner.GetWorldSizeInTiles();
-        float tileSize = worldSpawner.GetTileSize();
-        Vector3 playerPos = transform.position;
-
         foreach (var kvp in tileMap)
         {
-            Vector2Int tileCoord = kvp.Key;
             Transform tileTransform = kvp.Value;
 
-            Vector3 tilePos = tileTransform.position;
-            Vector3 offset = tilePos - playerPos;
+            if (tileTransform == null)
+                return;
+            
+            CullTiles(tileTransform);
 
-            int moveX = 0, moveY = 0;
+            WrapTiles(tileTransform, transform.position);
+            
+        }
+    }
+    
+    private void CullTiles(Transform tileTransform)
+    {
+        float distance = Vector3.Distance(transform.position, tileTransform.position);
+        tileTransform.gameObject.SetActive(distance <= cullDistance);
+    }
+    
+    private void WrapTiles(Transform tileTransform, Vector3 playerPos)
+    {
+        Vector3 tilePos = tileTransform.position;
+        Vector3 offset = tilePos - playerPos;
 
-            // Wrap horizontally
-            if (offset.x > tileSize * gridSize.x / 2f)
-                moveX = -gridSize.x;
-            else if (offset.x < -tileSize * gridSize.x / 2f)
-                moveX = gridSize.x;
+        int moveX = 0, moveY = 0;
+            
+        if (offset.x > tileSize * worldSize.x / 2f)
+            moveX = -worldSize.x;
+        else if (offset.x < -tileSize * worldSize.x / 2f)
+            moveX = worldSize.x;
+            
+        if (offset.y > tileSize * worldSize.y / 2f)
+            moveY = -worldSize.y;
+        else if (offset.y < -tileSize * worldSize.y / 2f)
+            moveY = worldSize.y;
 
-            // Wrap vertically
-            if (offset.y > tileSize * gridSize.y / 2f)
-                moveY = -gridSize.y;
-            else if (offset.y < -tileSize * gridSize.y / 2f)
-                moveY = gridSize.y;
-
-            if (moveX != 0 || moveY != 0)
-            {
-                tileTransform.position += new Vector3(moveX * tileSize, moveY * tileSize, 0f);
-            }
+        if (moveX != 0 || moveY != 0)
+        {
+            tileTransform.position += new Vector3(moveX * tileSize, moveY * tileSize, 0f);
         }
     }
 }

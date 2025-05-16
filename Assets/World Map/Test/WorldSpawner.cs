@@ -6,13 +6,20 @@ using Random = UnityEngine.Random;
 
 public class WorldSpawner : MonoBehaviour
 {
-    [SerializeField] private GameObject planePrefab;
-    [SerializeField] private Material[] tileMaterials;
-    [SerializeField] private Transform worldParent;
+    [Header("Grid Settings")]
+    [SerializeField] [Tooltip("2D array size / 0,0 is bottom left")] private int gridSize;
+    [SerializeField] [Tooltip("The object that the world tiles will live under")] private Transform worldParent;
+    
+    [Header("Ground Settings")]
+    [SerializeField] [Tooltip("The prefab for the world tiles")] private GameObject groundPrefab;
+    [SerializeField] [Tooltip("These will be assigned in their order")] private Material[] tileMaterials;
+    
+    [Header("Obstacle Settings")]
+    [SerializeField] GameObject obstaclePrefab; //TODO: add a min - max setting for tiles and an array for different obstacles
 
     private Dictionary<Vector2Int, Transform> tileMap = new Dictionary<Vector2Int, Transform>();
 
-    [SerializeField] private int gridSize;
+    
     Vector2Int gridSizeVector;
     private float spacingX;
     private float spacingY;
@@ -21,16 +28,13 @@ public class WorldSpawner : MonoBehaviour
     private Vector3 localMinBounds;
     private Vector3 localMaxBounds;
     
-    [SerializeField] GameObject obstaclePrefab;
+    
 
     private void Awake()
     {
         gridSizeVector = new Vector2Int(gridSize, gridSize);
-    }
-
-    void Start()
-    {
-        if (planePrefab == null)
+        
+        if (groundPrefab == null)
         {
             Debug.LogError("Plane Prefab is not assigned!");
             return;
@@ -43,21 +47,25 @@ public class WorldSpawner : MonoBehaviour
         }
 
         // Attempt to get the size from the plane's Renderer bounds
-        Renderer planeRenderer = planePrefab.GetComponent<Renderer>();
+        Renderer planeRenderer = groundPrefab.GetComponent<Renderer>();
         if (planeRenderer != null)
         {
             spacingX = planeRenderer.bounds.size.x;
             spacingY = planeRenderer.bounds.size.y;
-            Debug.Log($"Tile Size X: {spacingX}, Tile Size Y: {spacingY}");
             
             SpawnGrid();
         }
         else
         {
             Debug.LogError("Plane prefab does not have a Renderer component to determine size. Please manually set the spacing or ensure the prefab has a Renderer.");
+            return;
         }
     }
 
+
+    /// <summary>
+    /// Creates a 2D grid with 0,0 at the bottom left and 1,1 at top right
+    /// </summary>
     private void SpawnGrid()
     {
         float totalWidth = (gridSizeVector.x - 1) * spacingX;
@@ -71,27 +79,18 @@ public class WorldSpawner : MonoBehaviour
             for (int x = 0; x < gridSizeVector.y; x++)
             {
                 Vector3 spawnPosition = new Vector3(x * spacingX, y * spacingY, 0f) + centerOffset + worldParent.position;
-                GameObject tileInstance = Instantiate(planePrefab, spawnPosition, Quaternion.identity, worldParent);
+                GameObject tileInstance = Instantiate(groundPrefab, spawnPosition, Quaternion.identity, worldParent);
 
                 spriteRenderer = tileInstance.GetComponent<SpriteRenderer>();
                 
                 localMinBounds = tileInstance.transform.InverseTransformPoint(spriteRenderer.bounds.min);
                 localMaxBounds = tileInstance.transform.InverseTransformPoint(spriteRenderer.bounds.max);
 
-                Vector3 obstacleSpawnPosition = new Vector3(
-                    Random.Range(localMinBounds.x, localMaxBounds.x),
-                    Random.Range(localMinBounds.y, localMaxBounds.y),
-                    -1f);
-                
-                GameObject obstacleInstance = Instantiate(obstaclePrefab, Vector3.zero, Quaternion.identity);
-                
-                obstacleInstance.transform.SetParent(tileInstance.transform);
-                obstacleInstance.transform.localPosition = obstacleSpawnPosition;
-                
-                Renderer renderer = tileInstance.GetComponent<Renderer>();
-                if (renderer != null)
+                SpawnObstacles(tileInstance);
+
+                if (spriteRenderer != null)
                 {
-                    renderer.material = tileMaterials[materialIndex % tileMaterials.Length];
+                    spriteRenderer.material = tileMaterials[materialIndex % tileMaterials.Length];
                 }
                 else
                 {
@@ -107,14 +106,31 @@ public class WorldSpawner : MonoBehaviour
             }
         }
     }
-    
+
+    /// <summary>
+    /// The logic for spawning obstacles
+    /// </summary>
+    /// <param name="tileInstance"></param>
+    private void SpawnObstacles(GameObject tileInstance)
+    {
+        Vector3 obstacleSpawnPosition = new Vector3(
+            Random.Range(localMinBounds.x, localMaxBounds.x),
+            Random.Range(localMinBounds.y, localMaxBounds.y),
+            -1f);
+                
+        GameObject obstacleInstance = Instantiate(obstaclePrefab, Vector3.zero, Quaternion.identity);
+                
+        obstacleInstance.transform.SetParent(tileInstance.transform);
+        obstacleInstance.transform.localPosition = obstacleSpawnPosition;
+    }
+
     public Transform GetTile(Vector2Int tileCoord)
     {
         if (tileMap.ContainsKey(tileCoord))
         {
             return tileMap[tileCoord];
         }
-        return null; // Or handle the case where the tile doesn't exist
+        return null; 
     }
 
     public Dictionary<Vector2Int, Transform> GetTileMap()
@@ -129,6 +145,6 @@ public class WorldSpawner : MonoBehaviour
 
     public float GetTileSize()
     {
-        return spacingX;// its fine since it's a square
+        return spacingX;// it's fine since it's a square
     }
 }
